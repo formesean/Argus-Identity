@@ -17,11 +17,11 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
   {
     using var db = dbContextFactory.CreateDbContext();
 
-    var slot = block.Header().HeaderBody().Slot;
+    var slot = block.Header().HeaderBody().Slot();
     var timestamp = DateTime.UtcNow;
 
-    var txBodies = block.TransactionsBodies().ToList();
-    var txHashes = txBodies.Select(t => t.TxHash).ToList();
+    var txBodies = block.TransactionBodies().ToList();
+    var txHashes = txBodies.Select(t => t.Hash()).ToList();
 
     // 1. Check existing transactions
     var existingTxHashes = await db.WalletTransactions
@@ -35,12 +35,12 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
       .Where(u => txHashes.Contains(u.TxHash))
       .Select(u => new { u.TxHash, u.OutputIndex })
       .ToListAsync();
-    var existingUtxoSet = new HashSet<string, int>(existingUtxoKeys.Select(k => (k.TxHash, k.OutputIndex)));
+    var existingUtxoSet = new HashSet<(string, int)>(existingUtxoKeys.Select(k => (k.TxHash, k.OutputIndex)));
 
     // 3. Process transactions
     foreach (var tx in txBodies)
     {
-      var txHash = tx.TxHash;
+      var txHash = tx.Hash();
       if (existingTxSet.Contains(txHash)) continue;
 
       bool isContract = tx.ScriptDataHash() != null;
@@ -55,17 +55,17 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
       ));
     }
 
-    // 4. Process utxos
+    // 4. Process outputs
     foreach (var tx in txBodies)
     {
-      var txHash = tx.TxHash;
+      var txHash = tx.Hash();
 
       int index = 0;
       if (tx.Outputs() != null)
       {
         foreach (var output in tx.Outputs())
         {
-          // skip if this specific utxo already exists
+          // Skip if this specific utxo already exists
           if (existingUtxoSet.Contains((txHash, index)))
           {
             index++;
@@ -77,7 +77,7 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
           ulong amount = GetLovelace(val);
 
           db.WalletUtxos.Add(new WalletUtxo(
-            txHash,,
+            txHash,
             index++,
             address,
             amount,
@@ -92,21 +92,21 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
     {
       await db.SaveChangesAsync();
     }
-  };
+  }
 
   public async Task RollBackwardAsync(ulong slot)
   {
     using var db = dbContextFactory.CreateDbContext();
 
-    // 1. identify which transactions are being rolled back
+    // 1. Identify which transactions are being rolled back
     var txsToDelete = await db.WalletTransactions
-      .Where(t => t.Slot > slot)
+      .Where(t => t.Slot >= slot)
       .Select(t => t.TxHash)
       .ToListAsync();
 
     if (txsToDelete.Count == 0) return;
 
-    // 2. Delete the utxos first (foriegn key logic)
+    // 2. Delete the utxos first (foreign key logic)
     await db.WalletUtxos
       .Where(u => txsToDelete.Contains(u.TxHash))
       .ExecuteDeleteAsync();
@@ -115,7 +115,7 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
     await db.WalletTransactions
       .Where(t => t.Slot >= slot)
       .ExecuteDeleteAsync();
-  };
+  }
 
   private ulong GetLovelace(object val)
   {
@@ -125,10 +125,9 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
     var type = val.GetType();
     var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-    foreach (var name in new[] { "Coin", "Lovelace", "Amount", "Item1 "})
+    foreach (var name in new[] { "Coin", "Lovelace", "Amount", "Item1" })
     {
       var prop = props.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-
       if (prop != null && (prop.PropertyType == typeof(ulong) || prop.PropertyType == typeof(ulong?)))
       {
         var v = prop.GetValue(val);
@@ -144,5 +143,5 @@ public class IdentityReducer(IDbContextFactory<IdentityDbContext> dbContextFacto
     }
 
     return 0;
-  };
+  }
 }
