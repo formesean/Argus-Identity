@@ -1,0 +1,47 @@
+generator client {
+  provider   = "prisma-client"
+  output     = "./generated"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model ReducerStates {
+  Name                    String   @id(map: "PK_ReducerStates")
+  CreatedAt               DateTime @db.Timestamptz(6)
+  LatestIntersectionsJson String
+  StartIntersectionJson   String
+}
+
+model WalletTransactions {
+  TxHash                     String   @id(map: "PK_WalletTransactions")
+  Slot                       Decimal  @db.Decimal(20, 0)
+  Timestamp                  DateTime @db.Timestamptz(6)
+  SenderAddress              String
+  Fee                        Decimal  @db.Decimal(20, 0)
+  IsSmartContractInteraction Boolean
+
+  @@index([SenderAddress], map: "IX_WalletTransactions_SenderAddress")
+  @@index([Timestamp], map: "IX_WalletTransactions_Timestamp")
+}
+
+model WalletUtxos {
+  TxHash         String
+  OutputIndex    Int
+  Address        String
+  LovelaceAmount Decimal @db.Decimal(20, 0)
+  AssetPolicyId  String?
+  AssetName      String?
+
+  @@id([TxHash, OutputIndex], map: "PK_WalletUtxos")
+  @@index([Address], map: "IX_WalletUtxos_Address")
+}
+
+model EFMigrationsHistory {
+  MigrationId    String @id(map: "PK___EFMigrationsHistory") @db.VarChar(150)
+  ProductVersion String @db.VarChar(32)
+
+  @@map("__EFMigrationsHistory")
+}
