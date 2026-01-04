@@ -121,7 +121,7 @@ export function AlternatingCards() {
             </p>
             <div className="flex justify-center">
               <Link href="/investigate">
-                <Button className="bg-cyan-500 hover:bg-cyan-600 text-black font-mono font-bold text-lg px-8 py-6">
+                <Button className="hover:cursor-pointer bg-cyan-500 hover:bg-cyan-600 text-black font-mono font-bold text-lg px-8 py-6">
                   <Search className="mr-2 h-5 w-5" />
                   Start Profiling Wallets
                 </Button>
@@ -158,7 +158,7 @@ export function AlternatingCards() {
             generates a complete behavioral profile in seconds
           </p>
           <Link href="/investigate">
-            <Button className="bg-cyan-500 hover:bg-cyan-600 text-black font-mono font-bold text-lg px-10 py-6">
+            <Button className="hover:cursor-pointerbg-cyan-500 hover:bg-cyan-600 text-black font-mono font-bold text-lg px-10 py-6">
               <Search className="mr-2 h-5 w-5" />
               Launch Investigation Terminal
             </Button>
